@@ -137,12 +137,76 @@ export class EnhancedCapture {
           waitUntil: 'domcontentloaded',
           timeout
         })
-        // Give extra time for content to load
-        await new Promise(resolve => setTimeout(resolve, 5000))
       }
 
-      // Wait for dynamic content
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Enhanced dynamic content detection
+      this.log('Waiting for dynamic content...', 'debug')
+      onProgress?.('Navigation', 30, 'Waiting for dynamic content...')
+      
+      // Strategy 1: Wait for common framework indicators
+      await page.evaluate(() => {
+        return new Promise<void>((resolve) => {
+          const checkReady = () => {
+            // Check for React
+            if ((window as any).React && (window as any).React.version) {
+              const reactRoot = document.querySelector('[data-reactroot], #root, #app, #__next')
+              if (reactRoot && reactRoot.children.length > 0) {
+                return true
+              }
+            }
+            
+            // Check for Vue
+            if ((window as any).Vue || document.querySelector('[data-v-]')) {
+              return true
+            }
+            
+            // Check for Angular
+            if ((window as any).ng || document.querySelector('[ng-version]')) {
+              return true
+            }
+            
+            // Check for general dynamic content indicators
+            const hasContent = document.body.innerText.trim().length > 100
+            const hasImages = document.querySelectorAll('img[src]').length > 0
+            const hasLinks = document.querySelectorAll('a[href]').length > 5
+            
+            return hasContent || hasImages || hasLinks
+          }
+          
+          let attempts = 0
+          const maxAttempts = 30 // 15 seconds max
+          
+          const interval = setInterval(() => {
+            attempts++
+            if (checkReady() || attempts >= maxAttempts) {
+              clearInterval(interval)
+              resolve()
+            }
+          }, 500)
+        })
+      })
+      
+      // Strategy 2: Wait for additional network requests to complete
+      try {
+        await new Promise(resolve => setTimeout(resolve, 2000)) // Let any pending requests start
+        await Promise.race([
+          page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 5000 }),
+          new Promise(resolve => setTimeout(resolve, 5000))
+        ])
+      } catch {
+        // Continue anyway if network doesn't settle
+        this.log('Network did not settle, continuing...', 'debug')
+      }
+      
+      // Strategy 3: Check for lazy-loaded images
+      await page.evaluate(() => {
+        // Trigger any lazy loading by scrolling slightly
+        window.scrollBy(0, 300)
+        window.scrollBy(0, -300)
+      })
+      
+      // Final stabilization wait
+      await new Promise(resolve => setTimeout(resolve, 1000))
       onProgress?.('Navigation', 40, 'Page loaded')
 
       // Scroll to trigger lazy loading

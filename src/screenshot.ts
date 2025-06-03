@@ -37,20 +37,19 @@ const DEFAULT_RETRY_STRATEGIES: RetryStrategy[] = [
     waitUntil: 'networkidle0'
   },
   {
-    name: 'Quick DOM',
+    name: 'Dynamic Content',
     waitTime: 5000,
     waitUntil: 'domcontentloaded'
   },
   {
-    name: 'Extended Wait',
-    waitTime: 10000,
-    waitUntil: ['domcontentloaded', 'networkidle2']
+    name: 'SPA Mode',
+    waitTime: 8000,
+    waitUntil: 'networkidle2'
   },
   {
-    name: 'Minimal',
+    name: 'Force Load',
     waitTime: 3000,
-    waitUntil: 'load',
-    browserArgs: ['--disable-images', '--disable-javascript']
+    waitUntil: 'load'
   }
 ]
 
@@ -182,14 +181,74 @@ export class EnhancedScreenshotCapture {
       this.log(`Navigating to ${url} with ${strategy.name} strategy...`, 'debug')
       
       // Navigate with strategy-specific wait conditions
-      await page.goto(url, {
-        waitUntil: strategy.waitUntil,
-        timeout
-      })
+      try {
+        await page.goto(url, {
+          waitUntil: strategy.waitUntil,
+          timeout
+        })
+      } catch (navError) {
+        // If navigation times out, try continuing anyway
+        this.log(`Navigation timed out with ${strategy.name} strategy, attempting recovery...`, 'warn')
+        
+        // Check if page has actually loaded some content
+        const hasContent = await page.evaluate(() => document.body && document.body.innerText.length > 0)
+        if (!hasContent) {
+          throw navError
+        }
+      }
+
+      // Enhanced dynamic content detection for SPAs and modern frameworks
+      if (strategy.name === 'Dynamic Content' || strategy.name === 'SPA Mode') {
+        this.log('Detecting dynamic content framework...', 'debug')
+        
+        await page.evaluate(() => {
+          return new Promise<void>((resolve) => {
+            const checkFrameworks = () => {
+              // React detection
+              if ((window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__ || 
+                  document.querySelector('[data-reactroot], [data-react-root], #root, #app, #__next')) {
+                return true
+              }
+              
+              // Vue detection
+              if ((window as any).__VUE__ || (window as any).Vue || 
+                  document.querySelector('[data-server-rendered="true"], [data-v-]')) {
+                return true
+              }
+              
+              // Angular detection
+              if ((window as any).getAllAngularRootElements || 
+                  document.querySelector('[ng-version], [data-ng-version]')) {
+                return true
+              }
+              
+              // Svelte detection
+              if (document.querySelector('[data-svelte]')) {
+                return true
+              }
+              
+              // Generic SPA detection
+              const mainContent = document.querySelector('main, [role="main"], #app, #root, .app, .container')
+              return mainContent && mainContent.children.length > 0
+            }
+            
+            let checks = 0
+            const maxChecks = 20 // 10 seconds max
+            
+            const interval = setInterval(() => {
+              checks++
+              if (checkFrameworks() || checks >= maxChecks) {
+                clearInterval(interval)
+                resolve()
+              }
+            }, 500)
+          })
+        })
+      }
 
       // Additional wait time for dynamic content
       if (strategy.waitTime > 0) {
-        this.log(`Waiting ${strategy.waitTime}ms for dynamic content...`, 'debug')
+        this.log(`Waiting ${strategy.waitTime}ms for content stabilization...`, 'debug')
         await new Promise(resolve => setTimeout(resolve, strategy.waitTime))
       }
 
