@@ -248,9 +248,11 @@ program.action(async (url: string | undefined, options: CLIOptions) => {
       }), options, spinner)
       
       // After review, enter interactive mode
-      console.log(chalk.blue('\n💬 Entering interactive mode...'))
-      console.log(chalk.gray('Your screenshot has been saved and can be reviewed with /review\n'))
-      await runSimpleInteractiveMode({ verbose: options.verbose, initialUrl: options.url })
+      await runSimpleInteractiveMode({ 
+        verbose: options.verbose, 
+        initialUrl: options.url,
+        initialModel: options.model as AIModel
+      })
       return
     }
 
@@ -369,7 +371,7 @@ async function handleURLReview(reviewer: V0UIReviewerCLI, options: CLIOptions, s
       verbose: options.verbose,
       model: options.model as AIModel,
       deepDive: options.verbose,
-      extractStyles: options.extractStyles,
+      extractStyles: true, // Always extract styles for seamless experience
       styleOutputPath: options.styleOutput,
       styleFormat: options.styleFormat as 'json' | 'css' | 'tailwind' | undefined,
       onProgress: (step: string, percent: number, message?: string) => {

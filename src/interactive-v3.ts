@@ -25,10 +25,10 @@ export class SimpleInteractiveSession {
   private state: SessionState
   private isProcessing = false
 
-  constructor(reviewer: V0UIReviewerCLI, options: { verbose?: boolean, initialUrl?: string } = {}) {
+  constructor(reviewer: V0UIReviewerCLI, options: { verbose?: boolean, initialUrl?: string, initialModel?: AIModel } = {}) {
     this.state = {
       mode: 'remote',
-      model: configManager.get('defaultAIModel') || 'v0',
+      model: options.initialModel || configManager.get('defaultAIModel') || 'v0',
       reviewer,
       aiService: new MultiModelAIService({ verbose: options.verbose }),
       verbose: options.verbose || false,
@@ -298,22 +298,47 @@ export class SimpleInteractiveSession {
   }
 
   private async chat(message: string) {
-    if (!this.state.lastScreenshot && this.state.mode === 'remote') {
+    // Check if we have analysis data
+    const tempManager = getTempManager()
+    const analysis = await tempManager.getAnalysis()
+    const lastScreenshot = await tempManager.getLastScreenshot()
+    
+    if (!this.state.lastScreenshot && !analysis && this.state.mode === 'remote') {
       console.log(chalk.yellow('💡 Run /review first to analyze the website'))
       return
     }
 
     try {
-      const context = this.state.mode === 'remote' 
+      // Set lastScreenshot if we have saved data
+      if (!this.state.lastScreenshot && lastScreenshot && lastScreenshot.url === this.state.currentUrl) {
+        this.state.lastScreenshot = lastScreenshot.path
+      }
+      
+      // Build context with analysis data if available
+      let context = this.state.mode === 'remote' 
         ? `Discussing the UI/UX of ${this.state.currentUrl}`
         : `Discussing the project in ${this.state.currentPath}`
+      
+      if (analysis) {
+        context += `\n\nPrevious analysis summary:\n${analysis.componentBreakdown?.substring(0, 500)}...`
+      }
 
       console.log(chalk.gray('Thinking...'))
       
-      const response = await this.state.aiService.chat([
+      // Include screenshot in chat if available
+      const messages: any[] = [
         { role: 'system', content: context },
         { role: 'user', content: message }
-      ], {
+      ]
+      
+      // Add image if we have a screenshot
+      if (this.state.lastScreenshot) {
+        const imageBuffer = await fs.readFile(this.state.lastScreenshot)
+        const imageBase64 = imageBuffer.toString('base64')
+        messages[1].imageUrl = `data:image/png;base64,${imageBase64}`
+      }
+      
+      const response = await this.state.aiService.chat(messages, {
         model: this.state.model,
         temperature: 0.7
       })
@@ -371,20 +396,41 @@ export class SimpleInteractiveSession {
   }
 
   private async generateCode(component?: string) {
-    if (!this.state.lastScreenshot) {
+    // Check for saved data
+    const tempManager = getTempManager()
+    const lastScreenshot = await tempManager.getLastScreenshot()
+    const sessionData = await tempManager.getSessionData()
+    
+    if (!this.state.lastScreenshot && !lastScreenshot) {
       console.log(chalk.yellow('💡 Run /review first to analyze the website'))
       return
+    }
+    
+    // Set lastScreenshot if we have saved data
+    if (!this.state.lastScreenshot && lastScreenshot && lastScreenshot.url === this.state.currentUrl) {
+      this.state.lastScreenshot = lastScreenshot.path
     }
     
     try {
       console.log(chalk.gray('Generating code...'))
       
-      const prompt = component 
+      let prompt = component 
         ? `Generate React/Tailwind code for the ${component} component from the screenshot`
         : `Generate React/Tailwind code for the main components visible in the screenshot`
       
+      // Add style tokens context if available
+      if (sessionData.hasStyles) {
+        const tokens = await tempManager.getStyleTokens('json')
+        if (tokens) {
+          const tokenData = JSON.parse(tokens)
+          prompt += `\n\nUse these extracted design tokens:\n`
+          prompt += `Colors: ${JSON.stringify(tokenData.colors?.primary || {}).substring(0, 200)}...\n`
+          prompt += `Typography: ${JSON.stringify(tokenData.typography?.fontSizes || {}).substring(0, 200)}...`
+        }
+      }
+      
       // Read image and convert to base64
-      const imageBuffer = await fs.readFile(this.state.lastScreenshot)
+      const imageBuffer = await fs.readFile(this.state.lastScreenshot!)
       const imageBase64 = imageBuffer.toString('base64')
       
       const response = await this.state.aiService.chat([
@@ -499,6 +545,20 @@ export class SimpleInteractiveSession {
     // Show if URL was pre-set
     if (this.state.currentUrl) {
       console.log(chalk.green('✓'), `URL set to: ${this.state.currentUrl}`)
+      
+      // Check if we have saved analysis data
+      const tempManager = getTempManager()
+      const lastScreenshot = await tempManager.getLastScreenshot()
+      const analysis = await tempManager.getAnalysis()
+      const sessionData = await tempManager.getSessionData()
+      
+      if (lastScreenshot && lastScreenshot.url === this.state.currentUrl && analysis) {
+        this.state.lastScreenshot = lastScreenshot.path
+        console.log(chalk.green('✓'), 'Analysis data loaded from previous capture')
+        console.log(chalk.gray('  • Screenshot: ') + path.basename(lastScreenshot.path))
+        console.log(chalk.gray('  • Styles: ') + (sessionData.hasStyles ? 'Extracted' : 'Not extracted'))
+        console.log(chalk.blue('\n💬 Ready to chat! Ask me anything about the design.'))
+      }
     }
 
     // Update prompt after setting URL
@@ -507,7 +567,7 @@ export class SimpleInteractiveSession {
   }
 }
 
-export async function runSimpleInteractiveMode(options: { verbose?: boolean, initialUrl?: string } = {}) {
+export async function runSimpleInteractiveMode(options: { verbose?: boolean, initialUrl?: string, initialModel?: AIModel } = {}) {
   const apiKey = configManager.getApiKey()
   if (!apiKey) {
     console.error(chalk.red('No API key found. Run: v0-review --setup'))
@@ -515,6 +575,10 @@ export async function runSimpleInteractiveMode(options: { verbose?: boolean, ini
   }
 
   const reviewer = new V0UIReviewerCLI(apiKey, { verbose: options.verbose })
-  const session = new SimpleInteractiveSession(reviewer, options)
+  const session = new SimpleInteractiveSession(reviewer, {
+    verbose: options.verbose,
+    initialUrl: options.initialUrl,
+    initialModel: options.initialModel
+  })
   await session.start()
 }
