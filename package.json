@@ -1,0 +1,81 @@
+{
+  "name": "v0-ui-reviewer",
+  "version": "3.0.0",
+  "description": "AI-powered UI/UX analysis CLI with automatic style extraction and code generation",
+  "main": "dist/index.js",
+  "bin": {
+    "v0-review": "dist/cli.js",
+    "v0ui": "dist/cli.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "prepublishOnly": "npm run build",
+    "test": "node dist/cli.js --help"
+  },
+  "keywords": [
+    "ui",
+    "ux",
+    "design",
+    "review",
+    "ai",
+    "v0",
+    "cli",
+    "puppeteer",
+    "screenshot"
+  ],
+  "author": "Cody",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "boxen": "^8.0.1",
+    "chalk": "^5.3.0",
+    "cli-progress": "^3.12.0",
+    "commander": "^12.1.0",
+    "configstore": "^7.0.0",
+    "dotenv": "^16.5.0",
+    "enquirer": "^2.4.1",
+    "image-size": "^1.1.1",
+    "inquirer": "^12.6.3",
+    "keypress": "^0.2.1",
+    "node-fetch": "^3.3.2",
+    "open": "^10.1.2",
+    "openai": "^5.0.2",
+    "ora": "^8.1.0",
+    "puppeteer": "^23.9.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "puppeteer-extra-plugin-user-data-dir": "^2.4.1",
+    "puppeteer-extra-plugin-user-preferences": "^2.4.1",
+    "sharp": "^0.34.2",
+    "socket.io-client": "^4.8.1",
+    "style-scraper": "github:mrseanryan/style-scraper",
+    "terminal-image": "^3.1.1",
+    "terminal-kit": "^3.1.2",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@types/cli-progress": "^3.11.6",
+    "@types/configstore": "^6.0.2",
+    "@types/node": "^22.9.1",
+    "@types/terminal-kit": "^2.5.7",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codyf/v0-ui-reviewer-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/codyf/v0-ui-reviewer-cli/issues"
+  },
+  "homepage": "https://github.com/codyf/v0-ui-reviewer-cli#readme"
+}
