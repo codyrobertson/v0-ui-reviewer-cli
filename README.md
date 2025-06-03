@@ -31,11 +31,78 @@ v0-review tacolabs.ai
 - Instant results on subsequent reviews
 - Background style processing
 
-## ✨ What's New in v3.0
+## 🎬 Demo
 
-- 🤖 **Multi-Model AI Support** - Use GPT-4, Claude 3, or v0 for different perspectives
-- 💬 **Interactive Design Chat** - Chat with AI about your designs in real-time
-- 🖼️ **Enhanced Terminal Display** - Higher resolution images with CMD+R expand toggle
+```bash
+$ v0-review tacolabs.ai
+
+🎨 V0 UI/UX Expert Review
+📱 Device: Desktop (1920x1080)
+🌐 URL: https://tacolabs.ai
+📸 Mode: Full Page
+
+📸 Capturing desktop screenshot...
+🔄 Attempt 1/4 using Standard strategy
+✅ Screenshot captured: 1920x6896px
+🎨 Extracting design tokens...
+✅ Extracted 150 style samples
+
+🤖 Analyzing UI/UX...
+✅ Review complete!
+
+💬 Entering interactive mode...
+Your screenshot has been saved and can be reviewed with /review
+
+🌐 https://tacolabs.ai [o3-mini] › /code navbar
+
+Generating code...
+
+```jsx
+import React from 'react';
+
+const Navbar = () => {
+  return (
+    <nav className="bg-gray-900 text-white px-6 py-4">
+      <div className="max-w-7xl mx-auto flex justify-between items-center">
+        <div className="text-2xl font-bold">TacoLabs</div>
+        <div className="flex gap-6">
+          <a href="#features" className="hover:text-gray-300">Features</a>
+          <a href="#about" className="hover:text-gray-300">About</a>
+          <a href="#contact" className="hover:text-gray-300">Contact</a>
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+export default Navbar;
+```
+
+🌐 https://tacolabs.ai [o3-mini] › /styles
+
+🎨 Extracted Design Tokens
+📁 Location: /tmp/v0-ui-reviewer/v0-review-xxx/styles/
+
+✅ JSON (tokens.json):
+{
+  "colors": {
+    "primary": "#1a73e8",
+    "background": "#ffffff",
+    "text": "#202124",
+    ...
+  }
+}
+... (142 more lines)
+
+✅ CSS (tokens.css):
+:root {
+  --color-primary: #1a73e8;
+  --color-background: #ffffff;
+  --color-text: #202124;
+  ...
+}
+... (98 more lines)
+```
 - 🛡️ **Anti-Bot Detection** - Puppeteer-extra stealth plugin for reliable captures
 - 🔄 **Smart Retry Logic** - Multiple strategies for challenging websites
 - 🎨 **Advanced Style Extraction** - Extract computed CSS styles and design tokens from any website
