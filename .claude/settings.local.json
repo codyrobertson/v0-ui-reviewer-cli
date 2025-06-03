@@ -18,7 +18,11 @@
       "Bash(chmod:*)",
       "Bash(mv:*)",
       "Bash(git init:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(git commit:*)",
+      "Bash(git add:*)",
+      "Bash(gh repo create:*)",
+      "Bash(git push:*)"
     ]
   },
   "enableAllProjectMcpServers": false
