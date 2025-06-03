@@ -51,7 +51,7 @@ export class EnhancedCapture {
       viewportHeight = 1080,
       outputPath,
       mobile = false,
-      timeout = 30000,
+      timeout = 60000,
       extractStyles = false,
       stylePoints,
       styleGridSize = 10,
@@ -124,11 +124,22 @@ export class EnhancedCapture {
       this.log(`Navigating to ${url}...`, 'debug')
       onProgress?.('Navigation', 20, 'Loading page...')
       
-      // Navigate with comprehensive wait conditions
-      await page.goto(url, {
-        waitUntil: 'networkidle0',
-        timeout
-      })
+      try {
+        // Navigate with comprehensive wait conditions
+        await page.goto(url, {
+          waitUntil: 'networkidle0',
+          timeout
+        })
+      } catch (error) {
+        // If networkidle0 times out, try with a less strict condition
+        this.log('Initial navigation timed out, trying with relaxed conditions...', 'warn')
+        await page.goto(url, {
+          waitUntil: 'domcontentloaded',
+          timeout
+        })
+        // Give extra time for content to load
+        await new Promise(resolve => setTimeout(resolve, 5000))
+      }
 
       // Wait for dynamic content
       await new Promise(resolve => setTimeout(resolve, 2000))

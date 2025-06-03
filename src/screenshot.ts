@@ -111,7 +111,7 @@ export class EnhancedScreenshotCapture {
       viewportHeight = 1080,
       outputPath,
       mobile = false,
-      timeout = 30000,
+      timeout = 60000,
       onProgress,
       strategy = DEFAULT_RETRY_STRATEGIES[0]
     } = options

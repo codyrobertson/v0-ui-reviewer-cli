@@ -307,7 +307,17 @@ program.action(async (url: string | undefined, options: CLIOptions) => {
     }
 
   } catch (error) {
-    logger.error('Fatal error:', error instanceof Error ? error.message : String(error))
+    if (error instanceof Error && error.message.includes('Navigation timeout')) {
+      logger.error('The website took too long to load (exceeded 60 seconds)')
+      console.log(chalk.yellow('\n💡 Tips for slow-loading sites:'))
+      console.log(chalk.gray('  • Try running the command again - temporary network issues may resolve'))
+      console.log(chalk.gray('  • Some sites have aggressive bot protection that slows loading'))
+      console.log(chalk.gray('  • Consider using --no-full-page to capture just the viewport'))
+      console.log(chalk.gray('  • If the site requires authentication, capture a screenshot manually and use --screenshot'))
+    } else {
+      logger.error('Fatal error:', error instanceof Error ? error.message : String(error))
+    }
+    
     if (options.verbose && error instanceof Error) {
       logger.debug(error.stack || '')
     }
